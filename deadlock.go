@@ -77,7 +77,14 @@ func (m *Mutex) Lock() {
 		currID++
 	}
 	counterMu.Unlock()
-	lock(m.mu.Lock, m, false)
+
+	// shortcut for disabled deadlock detection to prevent extra copying of `m.mu.Lock` to the heap
+	if Opts.Disable {
+		m.mu.Lock()
+		return
+	}
+
+	lockEnabled(m.mu.Lock, m, false)
 }
 
 // Unlock unlocks the mutex.
@@ -121,7 +128,12 @@ func (m *RWMutex) Lock() {
 	}
 	counterMu.Unlock()
 
-	lock(m.mu.Lock, m, false)
+	if Opts.Disable {
+		m.mu.Lock()
+		return
+	}
+
+	lockEnabled(m.mu.Lock, m, false)
 }
 
 // Unlock unlocks the mutex for writing.  It is a run-time error if rw is
@@ -149,7 +161,12 @@ func (m *RWMutex) RLock() {
 	}
 	counterMu.Unlock()
 
-	lock(m.mu.RLock, m, true)
+	if Opts.Disable {
+		m.mu.RLock()
+		return
+	}
+
+	lockEnabled(m.mu.RLock, m, true)
 }
 
 // RUnlock undoes a single RLock call;
@@ -189,11 +206,7 @@ func checkLockOrdering(skip int, p identifiable, gid int64) {
 	lo.checkLockOrdering(skip, p, gid)
 }
 
-func lock(lockFn func(), ptr identifiable, preLockCheckRecursiveLocking bool) {
-	if Opts.Disable {
-		lockFn()
-		return
-	}
+func lockEnabled(lockFn func(), ptr identifiable, preLockCheckRecursiveLocking bool) {
 	// grab the current goroutine identifier
 	gid := goid.Get()
 	preLock(4, ptr, gid, preLockCheckRecursiveLocking)

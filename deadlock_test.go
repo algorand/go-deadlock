@@ -275,3 +275,24 @@ func TestRWMutexDoubleRLockFail(t *testing.T) {
 		t.Fatalf("expected 1 deadlocks, detected %d", deadlocks)
 	}
 }
+
+//go:noinline
+func benchRWAlloc(mu *RWMutex, res *int) {
+	mu.Lock()
+	defer mu.Unlock() // defer prefers inlining for the benchmark
+	*res++
+}
+
+// BenchmarkRWMutexAlloc demonstrates there is one alloc per lock invocation.
+func BenchmarkRWMutexAlloc(b *testing.B) {
+	disable := Opts.Disable
+	Opts.Disable = true
+	defer func() {
+		Opts.Disable = disable
+	}()
+	var mu *RWMutex = &RWMutex{}
+	var res int
+	for i := 0; i < b.N; i++ {
+		benchRWAlloc(mu, &res)
+	}
+}
