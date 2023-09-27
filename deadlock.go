@@ -71,18 +71,18 @@ func (m *Mutex) id() lockID {
 // Unless deadlock detection is disabled, logs potential deadlocks to Opts.LogBuf,
 // calling Opts.OnPotentialDeadlock on each occasion.
 func (m *Mutex) Lock() {
+	// shortcut for disabled deadlock detection to prevent extra copying of `m.mu.Lock` to the heap
+	if Opts.Disable {
+		m.mu.Lock()
+		return
+	}
+
 	counterMu.Lock()
 	if m.muId == 0 {
 		m.muId = currID
 		currID++
 	}
 	counterMu.Unlock()
-
-	// shortcut for disabled deadlock detection to prevent extra copying of `m.mu.Lock` to the heap
-	if Opts.Disable {
-		m.mu.Lock()
-		return
-	}
 
 	lockEnabled(m.mu.Lock, m, false)
 }
@@ -121,17 +121,17 @@ func (m *RWMutex) id() lockID {
 // Unless deadlock detection is disabled, logs potential deadlocks to Opts.LogBuf,
 // calling Opts.OnPotentialDeadlock on each occasion.
 func (m *RWMutex) Lock() {
+	if Opts.Disable {
+		m.mu.Lock()
+		return
+	}
+
 	counterMu.Lock()
 	if m.muId == 0 {
 		m.muId = currID
 		currID++
 	}
 	counterMu.Unlock()
-
-	if Opts.Disable {
-		m.mu.Lock()
-		return
-	}
 
 	lockEnabled(m.mu.Lock, m, false)
 }
@@ -154,17 +154,17 @@ func (m *RWMutex) Unlock() {
 // Unless deadlock detection is disabled, logs potential deadlocks to Opts.LogBuf,
 // calling Opts.OnPotentialDeadlock on each occasion.
 func (m *RWMutex) RLock() {
+	if Opts.Disable {
+		m.mu.RLock()
+		return
+	}
+
 	counterMu.Lock()
 	if m.muId == 0 {
 		m.muId = currID
 		currID++
 	}
 	counterMu.Unlock()
-
-	if Opts.Disable {
-		m.mu.RLock()
-		return
-	}
 
 	lockEnabled(m.mu.RLock, m, true)
 }
